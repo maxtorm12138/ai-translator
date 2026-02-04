@@ -29,8 +29,9 @@ export function createTranslationRequest(
   sourceLang: string = 'auto',
   config: PluginConfig
 ): APIRequest {
-  const systemPrompt = config.advanced.systemPrompt || 
-    `You are a professional translator specializing in social media content.
+  const systemPrompt = config.advanced.systemPrompt ||
+    `
+You are also a professional translator specializing in social media content.
 Translate the given text accurately while:
 1. Preserving the original tone and style
 2. Maintaining emojis and hashtags appropriately
@@ -50,11 +51,16 @@ Translate the given text accurately while:
 
   // 检测是否是 Moonshot/Kimi 模型
   const isMoonshotModel = config.api.model.includes('kimi') || config.api.endpoint.includes('moonshot');
+  
+  // 检测是否是 kimi-k2.5 模型（特殊处理）
+  const isKimiK2_5 = config.api.model === 'kimi-k2.5' || config.api.model.includes('k2.5');
 
   // 确保 temperature 是有效数值
-  // Kimi k2.5 模型要求 temperature 必须为 0.6
+  // kimi-k2.5 模型使用 temperature 1.0，其他 Moonshot 模型使用 0.6
   let temperature: number;
-  if (isMoonshotModel) {
+  if (isKimiK2_5) {
+    temperature = 1.0;
+  } else if (isMoonshotModel) {
     temperature = 0.6;
   } else {
     temperature = typeof config.advanced.temperature === 'number'
@@ -74,8 +80,12 @@ Translate the given text accurately while:
     stream: false
   };
 
-  // 如果是 Moonshot/Kimi 模型，禁用思考能力
-  if (isMoonshotModel) {
+  // 配置 thinking 参数
+  // kimi-k2.5 模型启用思考能力
+  // 其他 Moonshot/Kimi 模型禁用思考能力
+  if (isKimiK2_5) {
+    request.thinking = { type: 'enabled' };
+  } else if (isMoonshotModel) {
     request.thinking = { type: 'disabled' };
   }
 
