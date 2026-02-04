@@ -30,16 +30,21 @@ export class TweetParser {
    */
   static parse(element: HTMLElement): ParsedTweet | null {
     try {
+      console.log('[AI Translator] TweetParser.parse called for element:', element.tagName, element.className?.substring(0, 50));
       // 验证元素
       if (!this.isValidTweetElement(element)) {
+        console.log('[AI Translator] TweetParser.parse: element is not valid tweet element');
         return null;
       }
+      console.log('[AI Translator] TweetParser.parse: element passed validation');
 
       // 提取推文 ID
       const tweetId = this.extractTweetId(element);
       if (!tweetId) {
+        console.log('[AI Translator] TweetParser.parse: failed to extract tweet ID');
         return null;
       }
+      console.log('[AI Translator] TweetParser.parse: extracted tweet ID:', tweetId);
 
       // 提取文本内容
       const text = this.extractText(element);
@@ -86,29 +91,76 @@ export class TweetParser {
 
   /**
    * 验证是否是有效的推文元素
+   * 支持首页时间线和推文详情页的不同结构
    */
   private static isValidTweetElement(element: HTMLElement): boolean {
-    // 检查元素本身或其子元素是否包含 data-testid="tweet"
+    // 支持多种推文容器
+    const isArticle = element.tagName === 'ARTICLE';
     const hasTweetAttribute = element.matches('[data-testid="tweet"]') ||
                               element.querySelector('[data-testid="tweet"]') !== null;
+    const isCellInnerDiv = element.matches('[data-testid="cellInnerDiv"]') ||
+                           element.closest('[data-testid="cellInnerDiv"]') !== null;
     
-    // 检查是否包含推文文本
-    const textElement = element.querySelector(this.SELECTORS.TWEET_TEXT);
+    console.log('[AI Translator] isValidTweetElement: isArticle=', isArticle,
+      'hasTweetAttribute=', hasTweetAttribute,
+      'isCellInnerDiv=', isCellInnerDiv);
     
-    // 检查是否包含用户名称
-    const userNameElement = element.querySelector(this.SELECTORS.USER_NAME);
-
-    // 对于带有 data-testid="tweet" 的元素，优先认为是推文
-    if (hasTweetAttribute && textElement) {
+    if (!isArticle && !hasTweetAttribute && !isCellInnerDiv) {
+      console.log('[AI Translator] isValidTweetElement: rejected - not recognized as tweet container');
+      return false;
+    }
+    
+    // 检查是否包含推文文本（支持多种选择器）
+    let textElement = element.querySelector(this.SELECTORS.TWEET_TEXT);
+    
+    // 策略 1: 检查 data-testid="tweetText"
+    if (textElement) {
+      console.log('[AI Translator] isValidTweetElement: matched strategy 1 (tweetText)');
+      return true;
+    }
+    
+    // 策略 2: 检查 lang 属性（推文通常有 lang 属性标记语言）
+    const langElement = element.querySelector('[lang]');
+    if (langElement) {
+      console.log('[AI Translator] isValidTweetElement: matched strategy 2 (lang attribute)');
+      return true;
+    }
+    
+    // 策略 3: 检查包含长文本的 span（首页时间线推文结构）
+    const spans = element.querySelectorAll('span');
+    console.log('[AI Translator] isValidTweetElement: checking', spans.length, 'spans for strategy 3');
+    for (const span of spans) {
+      const text = span.textContent?.trim() || '';
+      // 过滤掉只包含 URL、短文本或特殊字符的
+      if (text.length > 10 && !/^https?:\/\//.test(text)) {
+        // 确保不是按钮或链接的一部分
+        const parentButton = span.closest('button, a[role="link"]');
+        if (!parentButton) {
+          console.log('[AI Translator] isValidTweetElement: matched strategy 3 (span with text length', text.length, ')');
+          return true;
+        }
+      }
+    }
+    
+    // 策略 4: 检查是否包含时间戳和用户信息
+    const hasTimestamp = element.querySelector('time') !== null;
+    const hasUserInfo = element.querySelector('a[href^="/"]') !== null;
+    
+    console.log('[AI Translator] isValidTweetElement: hasTimestamp=', hasTimestamp, 'hasUserInfo=', hasUserInfo);
+    
+    if (hasTimestamp && hasUserInfo) {
+      console.log('[AI Translator] isValidTweetElement: matched strategy 4 (timestamp + user info)');
       return true;
     }
 
-    // 否则需要满足所有条件
-    if (!textElement || !userNameElement) {
-      return false;
+    // 最后检查：对于带有 data-testid="tweet" 的元素，认为是推文
+    if (hasTweetAttribute) {
+      console.log('[AI Translator] isValidTweetElement: matched strategy 5 (has tweet attribute)');
+      return true;
     }
 
-    return true;
+    console.log('[AI Translator] isValidTweetElement: rejected - no strategy matched');
+    return false;
   }
 
   /**
@@ -117,11 +169,14 @@ export class TweetParser {
   private static extractTweetId(element: HTMLElement): string | null {
     // 方法 1: 从推文链接中提取
     const tweetLink = element.querySelector(this.SELECTORS.TWEET_LINK);
+    console.log('[AI Translator] extractTweetId: tweetLink found?', !!tweetLink);
     if (tweetLink) {
       const href = tweetLink.getAttribute('href');
+      console.log('[AI Translator] extractTweetId: tweetLink href =', href);
       if (href) {
         const match = href.match(/\/status\/(\d+)/);
         if (match) {
+          console.log('[AI Translator] extractTweetId: method 1 matched, ID =', match[1]);
           return match[1];
         }
       }
@@ -129,13 +184,16 @@ export class TweetParser {
 
     // 方法 2: 从时间戳链接中提取
     const timeElement = element.querySelector(this.SELECTORS.TIMESTAMP);
+    console.log('[AI Translator] extractTweetId: timeElement found?', !!timeElement);
     if (timeElement) {
       const parent = timeElement.closest('a');
       if (parent) {
         const href = parent.getAttribute('href');
+        console.log('[AI Translator] extractTweetId: time link href =', href);
         if (href) {
           const match = href.match(/\/status\/(\d+)/);
           if (match) {
+            console.log('[AI Translator] extractTweetId: method 2 matched, ID =', match[1]);
             return match[1];
           }
         }
@@ -144,12 +202,17 @@ export class TweetParser {
 
     // 方法 3: 生成基于内容的 ID
     const text = this.extractText(element);
-    if (text) {
-      return this.hashText(text);
+    console.log('[AI Translator] extractTweetId: extracted text length =', text?.length);
+    if (text && text.length > 0) {
+      const hashedId = this.hashText(text);
+      console.log('[AI Translator] extractTweetId: method 3 generated hash ID =', hashedId);
+      return hashedId;
     }
 
     // 方法 4: 使用时间戳作为 ID
-    return Date.now().toString(36) + Math.random().toString(36).substr(2);
+    const fallbackId = Date.now().toString(36) + Math.random().toString(36).substr(2);
+    console.log('[AI Translator] extractTweetId: method 4 using fallback ID =', fallbackId);
+    return fallbackId;
   }
 
   /**
@@ -157,26 +220,32 @@ export class TweetParser {
    */
   private static extractText(element: HTMLElement): string {
     // 尝试多种选择器获取推文文本
+    console.log('[AI Translator] extractText: starting extraction');
     let textElement = element.querySelector(this.SELECTORS.TWEET_TEXT);
+    console.log('[AI Translator] extractText: data-testid="tweetText" found?', !!textElement);
     
     // 如果找不到，尝试其他选择器
     if (!textElement) {
       // 尝试查找包含文本内容的 span 元素
       textElement = element.querySelector('div[dir="auto"] span');
+      console.log('[AI Translator] extractText: div[dir="auto"] span found?', !!textElement);
     }
     
     // 如果还是找不到，尝试查找任何文本内容
     if (!textElement) {
       const spans = element.querySelectorAll('span');
+      console.log('[AI Translator] extractText: checking', spans.length, 'spans for text content');
       for (const span of spans) {
         if (span.textContent && span.textContent.trim().length > 10) {
           textElement = span;
+          console.log('[AI Translator] extractText: found span with text:', span.textContent.trim().substring(0, 50));
           break;
         }
       }
     }
     
     if (!textElement) {
+      console.log('[AI Translator] extractText: no text element found, returning empty');
       return '';
     }
 

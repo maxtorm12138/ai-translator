@@ -31,30 +31,34 @@ export class UIInjector {
       display: inline-flex;
       align-items: center;
       gap: 4px;
-      padding: 6px 12px;
+      padding: 0;
       background: transparent;
-      border: 1px solid var(--at-border);
-      border-radius: var(--at-radius);
+      border: none;
       color: var(--at-primary);
-      font-size: 13px;
-      font-weight: 500;
+      font-size: 14px;
+      font-weight: 400;
       cursor: pointer;
-      transition: all 0.2s ease;
+      transition: opacity 0.2s ease;
+      text-decoration: none;
+      margin-top: 4px;
+      margin-bottom: 4px;
     }
     
     .at-btn:hover {
-      background: var(--at-bg-hover);
-      border-color: var(--at-primary);
+      opacity: 0.8;
+      text-decoration: underline;
     }
     
     .at-btn:disabled {
-      opacity: 0.6;
+      opacity: 0.5;
       cursor: not-allowed;
+      text-decoration: none;
     }
     
     .at-btn svg {
-      width: 16px;
-      height: 16px;
+      width: 14px;
+      height: 14px;
+      fill: var(--at-primary);
     }
     
     .at-result {
@@ -192,27 +196,28 @@ export class UIInjector {
     tweet: ParsedTweet,
     onTranslate: (tweet: ParsedTweet) => Promise<void>
   ): void {
-    console.log('[AI Translator] injectTranslateButton called for tweet:', tweet.id);
+    console.log('[AI Translator] injectTranslateButton called for tweet:', tweet.id, 'text preview:', tweet.text?.substring(0, 50));
     // 检查是否已注入
     if (this.uiStates.has(tweet.id)) {
       console.log('[AI Translator] Tweet already has UI injected:', tweet.id);
       return;
     }
 
-    // 找到合适的插入位置
-    const insertTarget = this.findInsertTarget(tweet.element);
-    if (!insertTarget) {
-      console.log('[AI Translator] Could not find insert target for tweet:', tweet.id);
+    // 找到推文文本容器作为插入参考点
+    console.log('[AI Translator] Finding tweet text container for element:', tweet.element.tagName, tweet.element.className?.substring(0, 50));
+    const tweetTextContainer = this.findTweetTextContainer(tweet.element);
+    if (!tweetTextContainer) {
+      console.log('[AI Translator] Could not find tweet text container for tweet:', tweet.id);
+      console.log('[AI Translator] Element HTML preview:', tweet.element.outerHTML?.substring(0, 500));
       return;
     }
-    console.log('[AI Translator] Found insert target for tweet:', tweet.id);
+    console.log('[AI Translator] Found tweet text container for tweet:', tweet.id, 'container:', tweetTextContainer.tagName, tweetTextContainer.className?.substring(0, 50));
 
     // 创建容器
     const container = document.createElement('div');
     container.className = `${UIInjector.NAMESPACE}-container`;
     container.style.cssText = `
-      margin-top: 8px;
-      margin-bottom: 8px;
+      display: block;
     `;
 
     // 创建 Shadow DOM
@@ -245,8 +250,8 @@ export class UIInjector {
     buttonContainer.appendChild(button);
     shadow.appendChild(buttonContainer);
 
-    // 插入到 DOM
-    insertTarget.appendChild(container);
+    // 插入到推文文本容器后面
+    tweetTextContainer.insertAdjacentElement('afterend', container);
     console.log('[AI Translator] Button injected for tweet:', tweet.id);
 
     // 保存状态
@@ -404,7 +409,7 @@ export class UIInjector {
       <svg viewBox="0 0 24 24" fill="currentColor">
         <path d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"/>
       </svg>
-      <span>翻译</span>
+      <span>使用AI翻译</span>
     `;
     button.addEventListener('click', async (e) => {
       e.preventDefault();
@@ -417,6 +422,79 @@ export class UIInjector {
       }
     });
     return button;
+  }
+
+  /**
+   * 查找推文文本容器
+   * 用于在文本后插入翻译按钮
+   * @param tweetElement 推文元素
+   * @returns HTMLElement | null
+   */
+  private findTweetTextContainer(tweetElement: HTMLElement): HTMLElement | null {
+    console.log('[AI Translator] findTweetTextContainer called, element tag:', tweetElement.tagName);
+    
+    // 策略 1: 找到推文文本元素本身
+    const tweetText = tweetElement.querySelector('[data-testid="tweetText"]');
+    console.log('[AI Translator] Strategy 1 - tweetText query:', tweetText ? 'found' : 'not found');
+    if (tweetText) {
+      return tweetText as HTMLElement;
+    }
+
+    // 策略 2: 如果没有找到 data-testid="tweetText"，找包含 lang 属性的元素
+    const langElement = tweetElement.querySelector('[lang]');
+    console.log('[AI Translator] Strategy 2 - lang element query:', langElement ? 'found' : 'not found');
+    if (langElement) {
+      return langElement as HTMLElement;
+    }
+
+    // 策略 3: 找到 article 中的文本区域
+    if (tweetElement.tagName === 'ARTICLE') {
+      // 找 article 中的第一个 div，通常是内容区域
+      const firstDiv = tweetElement.querySelector('div[dir="auto"]');
+      console.log('[AI Translator] Strategy 3 - dir="auto" div:', firstDiv ? 'found' : 'not found');
+      if (firstDiv) {
+        return firstDiv as HTMLElement;
+      }
+    }
+
+    // 策略 4: 查找包含文本内容的 span 元素
+    // 首页时间线的推文可能使用 span 包裹文本，但没有 data-testid
+    const spans = tweetElement.querySelectorAll('span');
+    console.log('[AI Translator] Strategy 4 - checking', spans.length, 'spans');
+    for (const span of spans) {
+      const text = span.textContent?.trim();
+      // 放宽条件：允许有子元素但内容足够长的 span
+      if (text && text.length > 5 && !/^https?:\/\//.test(text)) {
+        // 确保这个 span 不是按钮或链接的一部分
+        const parentButton = span.closest('button, a[role="link"]');
+        if (!parentButton) {
+          console.log('[AI Translator] Strategy 4 matched span with text length:', text.length);
+          return span as HTMLElement;
+        }
+      }
+    }
+
+    // 策略 5: 查找通用文本容器类名
+    // Twitter/X 可能使用的文本容器类名模式
+    const textContainerSelectors = [
+      '[class*="textContent"]',
+      '[class*="tweet-text"]',
+      '[class*="TweetText"]',
+      '[class*="tweetText"]',
+      '[class*="content"]',
+    ];
+    for (const selector of textContainerSelectors) {
+      const container = tweetElement.querySelector(selector);
+      if (container) {
+        console.log('[AI Translator] Strategy 5 matched selector:', selector);
+        return container as HTMLElement;
+      }
+    }
+
+    // 策略 6: 降级策略 - 返回推文元素本身
+    // 确保按钮至少能注入到推文的某个位置
+    console.log('[AI Translator] Using fallback strategy: returning tweet element itself');
+    return tweetElement;
   }
 
   /**

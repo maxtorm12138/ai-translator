@@ -471,8 +471,12 @@ export const DEFAULT_CONFIG: PluginConfig = {
 // ------------------------------------------
 
 export const TWITTER_SELECTORS = {
-  // 支持多种推文容器选择器：article 元素或带 data-testid="tweet" 的元素
+  // 支持多种推文容器选择器
+  // 1. article 元素（旧版）
+  // 2. data-testid="tweet" 的元素
+  // 3. data-testid="cellInnerDiv"（新版首页时间线）
   TWEET_ARTICLE: 'article',
+  TWEET_CELL_INNER: '[data-testid="cellInnerDiv"]',
   TWEET_TEXT: '[data-testid="tweetText"]',
   TWEET_LINK: 'a[href*="/status/"]',
   USER_NAME: '[data-testid="User-Name"]',
