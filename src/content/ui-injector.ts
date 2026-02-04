@@ -189,19 +189,23 @@ export class UIInjector {
    * @param onTranslate 翻译回调
    */
   injectTranslateButton(
-    tweet: ParsedTweet, 
+    tweet: ParsedTweet,
     onTranslate: (tweet: ParsedTweet) => Promise<void>
   ): void {
+    console.log('[AI Translator] injectTranslateButton called for tweet:', tweet.id);
     // 检查是否已注入
     if (this.uiStates.has(tweet.id)) {
+      console.log('[AI Translator] Tweet already has UI injected:', tweet.id);
       return;
     }
 
     // 找到合适的插入位置
     const insertTarget = this.findInsertTarget(tweet.element);
     if (!insertTarget) {
+      console.log('[AI Translator] Could not find insert target for tweet:', tweet.id);
       return;
     }
+    console.log('[AI Translator] Found insert target for tweet:', tweet.id);
 
     // 创建容器
     const container = document.createElement('div');
@@ -224,10 +228,15 @@ export class UIInjector {
     buttonContainer.className = 'at-button-wrapper';
 
     // 创建翻译按钮
+    console.log('[AI Translator] Creating translate button for tweet:', tweet.id);
     const button = this.createTranslateButton(async () => {
+      console.log('[AI Translator] Translate callback called for tweet:', tweet.id);
       button.disabled = true;
       try {
         await onTranslate(tweet);
+      } catch (error) {
+        console.error('[AI Translator] onTranslate error:', error);
+        throw error;
       } finally {
         button.disabled = false;
       }
@@ -238,6 +247,7 @@ export class UIInjector {
 
     // 插入到 DOM
     insertTarget.appendChild(container);
+    console.log('[AI Translator] Button injected for tweet:', tweet.id);
 
     // 保存状态
     this.uiStates.set(tweet.id, {
@@ -387,7 +397,7 @@ export class UIInjector {
    * @param onClick 点击回调
    * @returns HTMLButtonElement
    */
-  private createTranslateButton(onClick: () => void): HTMLButtonElement {
+  private createTranslateButton(onClick: () => Promise<void>): HTMLButtonElement {
     const button = document.createElement('button');
     button.className = 'at-btn';
     button.innerHTML = `
@@ -396,7 +406,16 @@ export class UIInjector {
       </svg>
       <span>翻译</span>
     `;
-    button.addEventListener('click', onClick);
+    button.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      console.log('[AI Translator] Translate button clicked');
+      try {
+        await onClick();
+      } catch (error) {
+        console.error('[AI Translator] Button click handler error:', error);
+      }
+    });
     return button;
   }
 
@@ -406,16 +425,43 @@ export class UIInjector {
    * @returns HTMLElement | null
    */
   private findInsertTarget(tweetElement: HTMLElement): HTMLElement | null {
-    // 尝试找到推文的操作栏（回复、转发、点赞按钮所在区域）
+    // 策略 1: 找到推文的操作栏（回复、转发、点赞按钮所在区域）
     const actionBar = tweetElement.querySelector('[role="group"]');
     if (actionBar?.parentElement) {
       return actionBar.parentElement;
     }
 
-    // 备选：找到推文文本的父元素
+    // 策略 2: 找到推文文本的父元素
     const tweetText = tweetElement.querySelector('[data-testid="tweetText"]');
     if (tweetText?.parentElement) {
       return tweetText.parentElement;
+    }
+
+    // 策略 3: 找到包含多个交互按钮的容器
+    const buttons = tweetElement.querySelectorAll('button[aria-label]');
+    for (const btn of buttons) {
+      const parent = btn.closest('div[role="group"]')?.parentElement;
+      if (parent) {
+        return parent;
+      }
+    }
+
+    // 策略 4: 找到 article 的最后一层 div
+    if (tweetElement.tagName === 'ARTICLE') {
+      // 找到 article 中最深的 div 容器
+      const divs = tweetElement.querySelectorAll(':scope > div');
+      if (divs.length > 0) {
+        return divs[divs.length - 1] as HTMLElement;
+      }
+    }
+
+    // 策略 5: 如果元素本身就是带 data-testid="tweet" 的容器
+    if (tweetElement.getAttribute('data-testid') === 'tweet') {
+      // 找到最后一个子 div
+      const children = Array.from(tweetElement.children).filter(el => el.tagName === 'DIV');
+      if (children.length > 0) {
+        return children[children.length - 1] as HTMLElement;
+      }
     }
 
     // 最后备选：返回推文元素本身

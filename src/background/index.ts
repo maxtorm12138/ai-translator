@@ -32,20 +32,24 @@ import {
  */
 
 // 初始化
+console.log('[AI Translator Background] Service Worker starting...');
 cacheMaintainance();
+console.log('[AI Translator Background] Service Worker initialized');
 
 // 监听消息
 chrome.runtime.onMessage.addListener((message: Message, sender, sendResponse) => {
+  console.log('[AI Translator Background] Received message:', message);
   // 处理异步响应
   handleMessage(message, sender)
     .then(response => {
+      console.log('[AI Translator Background] Sending response:', response);
       sendResponse({ success: true, data: response });
     })
     .catch(error => {
       console.error('[AI Translator Background] Error handling message:', error);
-      sendResponse({ 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Unknown error' 
+      sendResponse({
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
       });
     });
 
@@ -60,10 +64,11 @@ chrome.runtime.onMessage.addListener((message: Message, sender, sendResponse) =>
  * @returns Promise<any>
  */
 async function handleMessage(
-  message: Message, 
+  message: Message,
   sender: chrome.runtime.MessageSender
 ): Promise<unknown> {
   const startTime = Date.now();
+  console.log('[AI Translator Background] handleMessage, type:', message.type);
 
   switch (message.type) {
     case MessageType.TRANSLATE_TWEET:
@@ -104,8 +109,35 @@ async function handleTranslateRequest(
   startTime: number
 ): Promise<TranslateResultMessage | TranslateErrorMessage> {
   const { tweetId, text, sourceLang, targetLang } = message.payload;
+  console.log('[AI Translator Background] handleTranslateRequest:', { tweetId, text: text?.substring(0, 50), sourceLang, targetLang });
 
   try {
+    // 获取配置并验证
+    const config = await getFullConfig();
+    console.log('[AI Translator Background] Config:', {
+      endpoint: config.api.endpoint,
+      hasKey: !!config.api.key,
+      model: config.api.model
+    });
+    
+    if (!config.api.key) {
+      return createErrorResponse(
+        tweetId,
+        'CONFIG_MISSING_API_KEY',
+        '未配置 API 密钥，请在插件设置中配置',
+        false
+      );
+    }
+    
+    if (!config.api.endpoint) {
+      return createErrorResponse(
+        tweetId,
+        'CONFIG_INVALID_ENDPOINT',
+        '未配置 API 端点，请在插件设置中配置',
+        false
+      );
+    }
+
     // 验证输入
     if (!text || text.trim().length === 0) {
       return createErrorResponse(
@@ -115,9 +147,6 @@ async function handleTranslateRequest(
         false
       );
     }
-
-    // 获取配置
-    const config = await getFullConfig();
 
     // 检查缓存
     const cacheEnabled = await isCacheEnabled();

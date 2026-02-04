@@ -43,15 +43,27 @@ Translate the given text accurately while:
     : `Translate from ${sourceLang} to ${targetLang}:\n\n${text}`;
 
   // 根据文本长度动态计算 max_tokens
-  const estimatedTokens = Math.ceil(text.length * 2) + 100;
-  const maxTokens = Math.min(estimatedTokens, config.advanced.maxTokens || 2000);
+  // 日语/中文等 CJK 字符通常需要更多 token，分析输出需要额外空间
+  // 使用更宽松的估算：文本长度 * 4 + 500 缓冲区
+  const estimatedTokens = Math.ceil(text.length * 4) + 500;
+  const maxTokens = Math.min(estimatedTokens, config.advanced.maxTokens || 4000);
 
-  // 确保 temperature 是有效数值（0-2之间），默认为 0.3
-  const temperature = typeof config.advanced.temperature === 'number'
-    ? Math.max(0, Math.min(2, config.advanced.temperature))
-    : 0.3;
+  // 检测是否是 Moonshot/Kimi 模型
+  const isMoonshotModel = config.api.model.includes('kimi') || config.api.endpoint.includes('moonshot');
 
-  return {
+  // 确保 temperature 是有效数值
+  // Kimi k2.5 模型要求 temperature 必须为 0.6
+  let temperature: number;
+  if (isMoonshotModel) {
+    temperature = 0.6;
+  } else {
+    temperature = typeof config.advanced.temperature === 'number'
+      ? Math.max(0, Math.min(2, config.advanced.temperature))
+      : 0.3;
+  }
+
+  // 构建请求体
+  const request: APIRequest = {
     model: config.api.model,
     messages: [
       { role: 'system', content: systemPrompt },
@@ -61,6 +73,13 @@ Translate the given text accurately while:
     max_tokens: maxTokens,
     stream: false
   };
+
+  // 如果是 Moonshot/Kimi 模型，禁用思考能力
+  if (isMoonshotModel) {
+    request.thinking = { type: 'disabled' };
+  }
+
+  return request;
 }
 
 /**
@@ -97,6 +116,9 @@ export async function sendTranslationRequest(
   }, config.advanced.timeout);
 
   try {
+    console.log('[AI Translator API] Sending request to:', config.api.endpoint);
+    console.log('[AI Translator API] Request body:', JSON.stringify(request, null, 2));
+    console.log('[AI Translator API] max_tokens:', request.max_tokens);
     const response = await fetch(`${config.api.endpoint}/v1/chat/completions`, {
       method: 'POST',
       headers: {
@@ -116,6 +138,13 @@ export async function sendTranslationRequest(
     }
 
     const data: APIResponse = await response.json();
+    console.log('[AI Translator API] Response:', JSON.stringify(data, null, 2));
+    console.log('[AI Translator API] finish_reason:', data.choices?.[0]?.finish_reason);
+    
+    // 检查是否因为 token 限制被截断
+    if (data.choices?.[0]?.finish_reason === 'length') {
+      console.warn('[AI Translator API] Warning: Response truncated due to max_tokens limit');
+    }
     
     // 验证响应结构
     if (!data.choices || data.choices.length === 0) {
@@ -126,7 +155,13 @@ export async function sendTranslationRequest(
       );
     }
 
-    const content = data.choices[0].message.content.trim();
+    const message = data.choices[0].message;
+    let content = message?.content?.trim() || '';
+    
+    console.log('[AI Translator API] Raw message content:', content);
+    console.log('[AI Translator API] Message fields:', Object.keys(message || {}));
+    
+    console.log('[AI Translator API] Content:', content);
     const tokensUsed = data.usage?.total_tokens || 0;
 
     return {

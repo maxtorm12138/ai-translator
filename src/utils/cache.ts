@@ -56,6 +56,13 @@ export async function getCacheEntry(key: string): Promise<CacheEntry | null> {
       return null;
     }
     
+    // 验证缓存条目有有效的翻译结果
+    if (!entry.translatedText || entry.translatedText.trim().length === 0) {
+      console.log('[AI Translator] Cache entry has empty translation, removing');
+      await removeCacheEntry(key);
+      return null;
+    }
+    
     // 检查是否过期
     const config = await getCacheConfig();
     if (isExpired(entry.timestamp, config.maxAge)) {
@@ -136,6 +143,12 @@ export async function cacheTranslation(
   targetLang: string,
   tokensUsed: number
 ): Promise<void> {
+  // 验证翻译结果不为空
+  if (!translatedText || translatedText.trim().length === 0) {
+    console.warn('[AI Translator] Attempted to cache empty translation, skipping');
+    return;
+  }
+  
   const key = generateCacheKey(text, targetLang);
   
   const entry: CacheEntry = {

@@ -39,8 +39,7 @@
         "content/styles.css"
       ],
       "run_at": "document_idle",
-      "world": "ISOLATED",
-      "type": "module"
+      "world": "ISOLATED"
     }
   ],
   "web_accessible_resources": [

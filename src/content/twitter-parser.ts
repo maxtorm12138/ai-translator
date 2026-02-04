@@ -148,14 +148,34 @@ export class TweetParser {
       return this.hashText(text);
     }
 
-    return null;
+    // 方法 4: 使用时间戳作为 ID
+    return Date.now().toString(36) + Math.random().toString(36).substr(2);
   }
 
   /**
    * 提取推文文本
    */
   private static extractText(element: HTMLElement): string {
-    const textElement = element.querySelector(this.SELECTORS.TWEET_TEXT);
+    // 尝试多种选择器获取推文文本
+    let textElement = element.querySelector(this.SELECTORS.TWEET_TEXT);
+    
+    // 如果找不到，尝试其他选择器
+    if (!textElement) {
+      // 尝试查找包含文本内容的 span 元素
+      textElement = element.querySelector('div[dir="auto"] span');
+    }
+    
+    // 如果还是找不到，尝试查找任何文本内容
+    if (!textElement) {
+      const spans = element.querySelectorAll('span');
+      for (const span of spans) {
+        if (span.textContent && span.textContent.trim().length > 10) {
+          textElement = span;
+          break;
+        }
+      }
+    }
+    
     if (!textElement) {
       return '';
     }
@@ -207,6 +227,17 @@ export class TweetParser {
       const avatarImg = element.querySelector('img[src*="profile_images"]');
       if (avatarImg) {
         avatar = avatarImg.getAttribute('src') || '';
+      }
+    } else {
+      // 备选：尝试从其他位置提取作者信息
+      const allLinks = element.querySelectorAll('a[href^="/"]');
+      for (const link of allLinks) {
+        const href = link.getAttribute('href');
+        if (href && href.startsWith('/') && !href.includes('/status/') && href.length > 1) {
+          handle = href.replace('/', '@');
+          name = link.textContent || name;
+          break;
+        }
       }
     }
 

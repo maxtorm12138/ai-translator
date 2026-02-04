@@ -140,24 +140,24 @@ export default defineConfig(({ mode }): UserConfig => {
       cssCodeSplit: true,
       rollupOptions: {
         input,
-        output: {
-          entryFileNames: (chunkInfo: { name: string }) => {
-            if (chunkInfo.name === 'background') {
-              return 'background/index.js';
+        output: isContentOnly
+          ? {
+              entryFileNames: 'content/index.js',
+              format: 'iife', // Content Script 使用 IIFE 格式
+              inlineDynamicImports: true,
+              assetFileNames: 'assets/[name][extname]',
             }
-            return '[name].js';
-          },
-          inlineDynamicImports: isContentOnly,
-          chunkFileNames: isContentOnly ? undefined : 'shared/[name].js',
-          assetFileNames: (assetInfo: { name?: string }) => {
-            const info = assetInfo.name || '';
-            // Content script CSS 需要输出到 content/styles.css 以匹配 manifest.json
-            if (info.includes('content') && info.endsWith('.css')) {
-              return 'content/styles.css';
-            }
-            return 'assets/[name][extname]';
-          },
-        },
+          : {
+              entryFileNames: (chunkInfo: { name: string }) => {
+                if (chunkInfo.name === 'background') {
+                  return 'background/index.js';
+                }
+                return '[name].js';
+              },
+              format: 'es', // 其他脚本使用 ES 模块
+              chunkFileNames: 'shared/[name].js',
+              assetFileNames: 'assets/[name][extname]',
+            },
       },
     },
     resolve: {

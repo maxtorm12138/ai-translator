@@ -135,6 +135,11 @@ export interface ChatMessage {
   content: string;
 }
 
+/** 思考模式配置 (Moonshot/Kimi API) */
+export interface ThinkingConfig {
+  type: 'disabled' | 'enabled';
+}
+
 /** OpenAI 兼容 API 请求 */
 export interface APIRequest {
   model: string;
@@ -145,6 +150,7 @@ export interface APIRequest {
   stop?: string | string[];
   presence_penalty?: number;
   frequency_penalty?: number;
+  thinking?: ThinkingConfig;
 }
 
 /** OpenAI 兼容 API 响应选择 */
@@ -454,7 +460,7 @@ export const DEFAULT_CONFIG: PluginConfig = {
   },
   advanced: {
     temperature: 0.3,
-    maxTokens: 2000,
+    maxTokens: 4000,
     timeout: 30000,
     retryAttempts: 3
   }

@@ -21,16 +21,21 @@ let uiInjector: UIInjector | null = null;
 // 防抖定时器
 let debounceTimer: number | null = null;
 
+// 全局观察器
+let domObserver: MutationObserver | null = null;
+
 /**
  * 初始化 Content Script
  */
 function initialize(): void {
-  console.log('[AI Translator] Content script initialized');
-
+  console.log('[AI Translator] Initializing...');
+  console.log('[AI Translator] Hostname:', window.location.hostname);
   // 检查是否在 Twitter/X 页面
   if (!isTwitterPage()) {
+    console.log('[AI Translator] Not a Twitter page, exiting');
     return;
   }
+  console.log('[AI Translator] Twitter page detected');
 
   // 初始化 UI 注入器
   uiInjector = new UIInjector();
@@ -38,11 +43,34 @@ function initialize(): void {
   // 开始观察 DOM 变化
   observeDOM();
 
-  // 处理页面上已有的推文
-  processExistingTweets();
+  // 延迟处理页面上已有的推文，确保 DOM 已加载
+  setTimeout(() => {
+    processExistingTweets();
+  }, 500);
+  
+  // 再次延迟处理，确保动态加载的推文也被处理
+  setTimeout(() => {
+    processExistingTweets();
+  }, 2000);
 
   // 监听来自 Background 的消息
   chrome.runtime.onMessage.addListener(handleBackgroundMessage);
+  
+  // 监听页面变化（Twitter 是单页应用）
+  let lastUrl = location.href;
+  new MutationObserver(() => {
+    const url = location.href;
+    if (url !== lastUrl) {
+      lastUrl = url;
+      // 重置已处理集合，因为页面内容已改变
+      processedTweets.clear();
+      document.querySelectorAll(`[data-${NAMESPACE}-processed]`).forEach(el => {
+        el.removeAttribute(`data-${NAMESPACE}-processed`);
+        el.removeAttribute(`data-${NAMESPACE}-tweet-id`);
+      });
+      setTimeout(processExistingTweets, 500);
+    }
+  }).observe(document, { subtree: true, childList: true });
 }
 
 /**
@@ -50,14 +78,23 @@ function initialize(): void {
  */
 function isTwitterPage(): boolean {
   const hostname = window.location.hostname;
-  return hostname === 'twitter.com' || hostname === 'x.com';
+  return hostname === 'twitter.com' ||
+         hostname === 'x.com' ||
+         hostname === 'www.twitter.com' ||
+         hostname === 'www.x.com' ||
+         hostname.endsWith('.twitter.com') ||
+         hostname.endsWith('.x.com');
 }
 
 /**
  * 观察 DOM 变化
  */
 function observeDOM(): void {
-  const observer = new MutationObserver((mutations) => {
+  if (domObserver) {
+    return;
+  }
+  
+  domObserver = new MutationObserver((mutations) => {
     // 防抖处理
     if (debounceTimer) {
       clearTimeout(debounceTimer);
@@ -68,7 +105,7 @@ function observeDOM(): void {
     }, 100);
   });
 
-  observer.observe(document.body, {
+  domObserver.observe(document.body, {
     childList: true,
     subtree: true
   });
@@ -154,9 +191,11 @@ async function processTweetElement(element: HTMLElement): Promise<void> {
     if (!tweet) {
       return;
     }
+    console.log('[AI Translator] Processing tweet:', tweet.id);
 
     // 检查是否已处理过这个 ID
     if (processedTweets.has(tweet.id)) {
+      console.log('[AI Translator] Tweet already processed:', tweet.id);
       return;
     }
 
@@ -167,7 +206,10 @@ async function processTweetElement(element: HTMLElement): Promise<void> {
 
     // 注入翻译按钮
     if (uiInjector) {
+      console.log('[AI Translator] Injecting button for tweet:', tweet.id);
       uiInjector.injectTranslateButton(tweet, handleTranslateRequest);
+    } else {
+      console.log('[AI Translator] UIInjector not available');
     }
 
   } catch (error) {
@@ -179,11 +221,13 @@ async function processTweetElement(element: HTMLElement): Promise<void> {
  * 处理翻译请求
  */
 async function handleTranslateRequest(tweet: ParsedTweet): Promise<void> {
+  console.log('[AI Translator] handleTranslateRequest called for tweet:', tweet.id);
   try {
     // 显示加载状态
     uiInjector?.showLoading(tweet.id);
 
     // 发送翻译请求到 Background
+    console.log('[AI Translator] Sending message to background');
     const response = await chrome.runtime.sendMessage({
       type: MessageType.TRANSLATE_TWEET,
       payload: {
@@ -194,6 +238,11 @@ async function handleTranslateRequest(tweet: ParsedTweet): Promise<void> {
       },
       timestamp: Date.now()
     });
+    console.log('[AI Translator] Received response:', response);
+    if (response.data?.payload?.translatedText) {
+      console.log('[AI Translator] Translated text length:', response.data.payload.translatedText.length);
+      console.log('[AI Translator] Translated text preview:', response.data.payload.translatedText.substring(0, 200));
+    }
 
     if (!response.success) {
       throw new Error(response.error || '翻译请求失败');
@@ -222,10 +271,11 @@ async function handleTranslateRequest(tweet: ParsedTweet): Promise<void> {
  * 处理来自 Background 的消息
  */
 function handleBackgroundMessage(
-  message: unknown, 
-  sender: chrome.runtime.MessageSender, 
+  message: unknown,
+  sender: chrome.runtime.MessageSender,
   sendResponse: (response?: unknown) => void
 ): boolean {
+  console.log('[AI Translator] Received background message:', message);
   // 目前主要用于配置变更通知
   const msg = message as { type: string; payload?: unknown };
   
