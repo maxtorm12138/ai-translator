@@ -7,7 +7,8 @@ import type { ParsedTweet, TweetAuthor, TweetMedia } from '@/types';
 
 export class TweetParser {
   private static readonly SELECTORS = {
-    TWEET_ARTICLE: 'article[data-testid="tweet"]',
+    TWEET_ARTICLE: 'article',
+    TWEET_CONTAINER: '[data-testid="tweet"]',
     TWEET_TEXT: '[data-testid="tweetText"]',
     TWEET_TEXT_SPAN: '[data-testid="tweetText"] > span',
     USER_NAME: '[data-testid="User-Name"]',
@@ -87,15 +88,23 @@ export class TweetParser {
    * 验证是否是有效的推文元素
    */
   private static isValidTweetElement(element: HTMLElement): boolean {
+    // 检查元素本身或其子元素是否包含 data-testid="tweet"
+    const hasTweetAttribute = element.matches('[data-testid="tweet"]') ||
+                              element.querySelector('[data-testid="tweet"]') !== null;
+    
     // 检查是否包含推文文本
     const textElement = element.querySelector(this.SELECTORS.TWEET_TEXT);
-    if (!textElement) {
-      return false;
-    }
-
+    
     // 检查是否包含用户名称
     const userNameElement = element.querySelector(this.SELECTORS.USER_NAME);
-    if (!userNameElement) {
+
+    // 对于带有 data-testid="tweet" 的元素，优先认为是推文
+    if (hasTweetAttribute && textElement) {
+      return true;
+    }
+
+    // 否则需要满足所有条件
+    if (!textElement || !userNameElement) {
       return false;
     }
 

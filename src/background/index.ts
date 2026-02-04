@@ -75,6 +75,10 @@ async function handleMessage(
     case MessageType.SET_CONFIG:
       return handleSetConfig(message as SetConfigMessage);
 
+    case MessageType.CONFIG_CHANGED:
+      // CONFIG_CHANGED 是广播消息，background 不需要处理，直接返回
+      return Promise.resolve({ acknowledged: true });
+
     case MessageType.CLEAR_CACHE:
       return handleClearCache(message as ClearCacheMessage);
 

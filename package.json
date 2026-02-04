@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "tsc && vite build --mode content && vite build",
     "build:watch": "vite build --watch",
     "build:firefox": "tsc && cross-env TARGET=firefox vite build",
     "lint": "eslint src --ext .ts",

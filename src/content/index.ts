@@ -83,13 +83,24 @@ function handleMutations(mutations: MutationRecord[]): void {
   for (const mutation of mutations) {
     for (const node of mutation.addedNodes) {
       if (node instanceof HTMLElement) {
-        // 检查是否是推文元素
+        // 检查是否是推文元素（article 或带 data-testid="tweet" 的元素）
         if (node.matches?.(TWITTER_SELECTORS.TWEET_ARTICLE)) {
           tweetElements.push(node);
         }
+        
+        // 检查是否是直接带 data-testid="tweet" 的元素
+        if (node.matches?.('[data-testid="tweet"]')) {
+          tweetElements.push(node);
+        }
 
-        // 检查子元素中是否有推文
-        const tweets = node.querySelectorAll?.(TWITTER_SELECTORS.TWEET_ARTICLE);
+        // 检查子元素中是否有推文（article 标签）
+        const articles = node.querySelectorAll?.(TWITTER_SELECTORS.TWEET_ARTICLE);
+        if (articles) {
+          tweetElements.push(...Array.from(articles) as HTMLElement[]);
+        }
+
+        // 检查子元素中是否有带 data-testid="tweet" 的元素
+        const tweets = node.querySelectorAll?.('[data-testid="tweet"]');
         if (tweets) {
           tweetElements.push(...Array.from(tweets) as HTMLElement[]);
         }
@@ -97,8 +108,11 @@ function handleMutations(mutations: MutationRecord[]): void {
     }
   }
 
+  // 去重
+  const uniqueElements = [...new Set(tweetElements)];
+
   // 处理发现的推文
-  for (const element of tweetElements) {
+  for (const element of uniqueElements) {
     processTweetElement(element);
   }
 }
@@ -107,9 +121,21 @@ function handleMutations(mutations: MutationRecord[]): void {
  * 处理页面上已有的推文
  */
 function processExistingTweets(): void {
-  const tweets = document.querySelectorAll(TWITTER_SELECTORS.TWEET_ARTICLE);
-  for (const tweet of tweets) {
-    processTweetElement(tweet as HTMLElement);
+  const tweetElements: HTMLElement[] = [];
+  
+  // 查找所有 article 元素
+  const articles = document.querySelectorAll(TWITTER_SELECTORS.TWEET_ARTICLE);
+  tweetElements.push(...Array.from(articles) as HTMLElement[]);
+  
+  // 查找所有带 data-testid="tweet" 的元素
+  const tweets = document.querySelectorAll('[data-testid="tweet"]');
+  tweetElements.push(...Array.from(tweets) as HTMLElement[]);
+  
+  // 去重
+  const uniqueElements = [...new Set(tweetElements)];
+  
+  for (const element of uniqueElements) {
+    processTweetElement(element);
   }
 }
 

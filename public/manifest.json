@@ -12,7 +12,8 @@
   },
   "permissions": [
     "storage",
-    "activeTab"
+    "activeTab",
+    "alarms"
   ],
   "optional_permissions": [
     "scripting"
@@ -38,13 +39,15 @@
         "content/styles.css"
       ],
       "run_at": "document_idle",
-      "world": "ISOLATED"
+      "world": "ISOLATED",
+      "type": "module"
     }
   ],
   "web_accessible_resources": [
     {
       "resources": [
-        "assets/*"
+        "assets/*",
+        "shared/*"
       ],
       "matches": [
         "https://twitter.com/*",

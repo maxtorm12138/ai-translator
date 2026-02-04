@@ -46,13 +46,18 @@ Translate the given text accurately while:
   const estimatedTokens = Math.ceil(text.length * 2) + 100;
   const maxTokens = Math.min(estimatedTokens, config.advanced.maxTokens || 2000);
 
+  // 确保 temperature 是有效数值（0-2之间），默认为 0.3
+  const temperature = typeof config.advanced.temperature === 'number'
+    ? Math.max(0, Math.min(2, config.advanced.temperature))
+    : 0.3;
+
   return {
     model: config.api.model,
     messages: [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt }
     ],
-    temperature: config.advanced.temperature,
+    temperature,
     max_tokens: maxTokens,
     stream: false
   };
@@ -299,6 +304,8 @@ async function parseAPIError(response: Response): Promise<TranslationErrorWrappe
   }
 
   const errorCode = errorData.error?.code || '';
+  const errorType = errorData.error?.type || '';
+  const errorMessage = errorData.error?.message || '';
   const httpStatus = response.status;
   
   // 映射 OpenAI 错误码到内部错误码
@@ -320,7 +327,20 @@ async function parseAPIError(response: Response): Promise<TranslationErrorWrappe
     503: ErrorCode.API_SERVER_ERROR
   };
 
-  const internalCode = errorMapping[errorCode] || httpErrorMapping[httpStatus] || ErrorCode.API_UNKNOWN_ERROR;
+  // 首先检查错误码映射
+  let internalCode = errorMapping[errorCode] || httpErrorMapping[httpStatus];
+  
+  // 如果没有匹配到，根据错误类型和消息进一步判断
+  if (!internalCode) {
+    // 检查是否是 API 密钥相关的错误
+    if (errorType === 'invalid_request_error' &&
+        (errorMessage.toLowerCase().includes('api key') ||
+         errorMessage.toLowerCase().includes('incorrect api key'))) {
+      internalCode = ErrorCode.API_UNAUTHORIZED;
+    } else {
+      internalCode = ErrorCode.API_UNKNOWN_ERROR;
+    }
+  }
   
   // 判断是否可以重试
   const retryableCodes: ErrorCode[] = [

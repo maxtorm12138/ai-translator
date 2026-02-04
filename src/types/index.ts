@@ -465,7 +465,8 @@ export const DEFAULT_CONFIG: PluginConfig = {
 // ------------------------------------------
 
 export const TWITTER_SELECTORS = {
-  TWEET_ARTICLE: 'article[data-testid="tweet"]',
+  // 支持多种推文容器选择器：article 元素或带 data-testid="tweet" 的元素
+  TWEET_ARTICLE: 'article',
   TWEET_TEXT: '[data-testid="tweetText"]',
   TWEET_LINK: 'a[href*="/status/"]',
   USER_NAME: '[data-testid="User-Name"]',

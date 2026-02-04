@@ -279,6 +279,9 @@ async function handleTestApi(): Promise<void> {
   setTestButtonLoading(true);
   
   try {
+    // 读取高级设置中的 temperature
+    const temperature = parseFloat(elements.temperature.value) || 0.3;
+    
     // 构建测试用的临时配置
     const testConfig: PluginConfig = {
       ...DEFAULT_CONFIG,
@@ -286,6 +289,10 @@ async function handleTestApi(): Promise<void> {
         endpoint,
         key: apiKey,
         model
+      },
+      advanced: {
+        ...DEFAULT_CONFIG.advanced,
+        temperature
       }
     };
     
