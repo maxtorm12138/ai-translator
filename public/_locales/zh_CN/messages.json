@@ -1,0 +1,70 @@
+{
+  "extName": {
+    "message": "AI 翻译助手",
+    "description": "扩展名称"
+  },
+  "extDescription": {
+    "message": "基于 OpenAI 的智能翻译插件，专为 X/Twitter 设计",
+    "description": "扩展描述"
+  },
+  "cmdToggleTranslation": {
+    "message": "切换翻译显示",
+    "description": "快捷键命令描述"
+  },
+  "popupTitle": {
+    "message": "AI 翻译助手",
+    "description": "弹窗标题"
+  },
+  "settingsTitle": {
+    "message": "设置",
+    "description": "设置标题"
+  },
+  "apiSettings": {
+    "message": "API 设置",
+    "description": "API设置区域标题"
+  },
+  "apiEndpointLabel": {
+    "message": "API 地址",
+    "description": "API地址标签"
+  },
+  "apiKeyLabel": {
+    "message": "API 密钥",
+    "description": "API密钥标签"
+  },
+  "modelLabel": {
+    "message": "模型",
+    "description": "模型标签"
+  },
+  "translationSettings": {
+    "message": "翻译设置",
+    "description": "翻译设置区域标题"
+  },
+  "targetLangLabel": {
+    "message": "目标语言",
+    "description": "目标语言标签"
+  },
+  "autoTranslateLabel": {
+    "message": "自动翻译",
+    "description": "自动翻译开关标签"
+  },
+  "saveButton": {
+    "message": "保存",
+    "description": "保存按钮"
+  },
+  "translateButton": {
+    "message": "翻译",
+    "description": "翻译按钮"
+  },
+  "translatingText": {
+    "message": "翻译中...",
+    "description": "翻译中提示"
+  },
+  "errorNetwork": {
+    "message": "网络错误，请重试",
+    "description": "网络错误提示"
+  },
+  "errorApiKey": {
+    "message": "API 密钥无效，请检查设置",
+    "description": "API密钥错误提示"
+  }
+}

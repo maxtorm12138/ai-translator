@@ -1,0 +1,163 @@
+/**
+ * Content Script 样式
+ * 这些样式会被注入到页面中，用于设置基础样式和动画
+ * 实际组件样式使用 Shadow DOM 隔离
+ */
+
+/* AI Translator 全局样式 */
+.ai-translator-container {
+  position: relative;
+  z-index: 1;
+}
+
+/* 确保 Shadow DOM 容器正确显示 */
+.ai-translator-container::part(container) {
+  display: block;
+}
+
+/* 动画关键帧 */
+@keyframes at-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes at-fade-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes at-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes at-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* 工具类 */
+.at-hidden {
+  display: none !important;
+}
+
+.at-invisible {
+  visibility: hidden !important;
+}
+
+.at-transparent {
+  opacity: 0 !important;
+}
+
+/* 过渡效果 */
+.at-transition {
+  transition: all 0.2s ease-in-out;
+}
+
+/* 滚动条样式（用于翻译结果区域） */
+.ai-translator-container ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.ai-translator-container ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.ai-translator-container ::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 3px;
+}
+
+.ai-translator-container ::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 0, 0, 0.4);
+}
+
+/* 暗黑模式滚动条 */
+@media (prefers-color-scheme: dark) {
+  .ai-translator-container ::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.2);
+  }
+
+  .ai-translator-container ::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(255, 255, 255, 0.4);
+  }
+}
+
+/* 响应式调整 */
+@media (max-width: 600px) {
+  .ai-translator-container {
+    font-size: 14px;
+  }
+}
+
+/* 打印样式 */
+@media print {
+  .ai-translator-container {
+    display: none !important;
+  }
+}
+
+/* 高对比度模式支持 */
+@media (prefers-contrast: high) {
+  .ai-translator-container {
+    border: 1px solid currentColor;
+  }
+}
+
+/* 减少动画支持 */
+@media (prefers-reduced-motion: reduce) {
+  .ai-translator-container *,
+  .ai-translator-container *::before,
+  .ai-translator-container *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* 防止 Twitter 的样式覆盖 */
+[data-testid="tweet"] .ai-translator-container {
+  all: initial;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* 确保按钮不会被 Twitter 的样式影响 */
+[data-testid="tweet"] .ai-translator-container button {
+  appearance: none;
+  -webkit-appearance: none;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+/* 聚焦样式 */
+.ai-translator-container button:focus-visible {
+  outline: 2px solid #1d9bf0;
+  outline-offset: 2px;
+}
+
+/* 选中样式 */
+.ai-translator-container ::selection {
+  background-color: rgba(29, 155, 240, 0.3);
+}

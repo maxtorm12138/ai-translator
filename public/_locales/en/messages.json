@@ -1,0 +1,70 @@
+{
+  "extName": {
+    "message": "AI Translator",
+    "description": "Extension name"
+  },
+  "extDescription": {
+    "message": "OpenAI-powered smart translation extension for X/Twitter",
+    "description": "Extension description"
+  },
+  "cmdToggleTranslation": {
+    "message": "Toggle translation display",
+    "description": "Keyboard shortcut description"
+  },
+  "popupTitle": {
+    "message": "AI Translator",
+    "description": "Popup title"
+  },
+  "settingsTitle": {
+    "message": "Settings",
+    "description": "Settings title"
+  },
+  "apiSettings": {
+    "message": "API Settings",
+    "description": "API settings section title"
+  },
+  "apiEndpointLabel": {
+    "message": "API Endpoint",
+    "description": "API endpoint label"
+  },
+  "apiKeyLabel": {
+    "message": "API Key",
+    "description": "API key label"
+  },
+  "modelLabel": {
+    "message": "Model",
+    "description": "Model label"
+  },
+  "translationSettings": {
+    "message": "Translation Settings",
+    "description": "Translation settings section title"
+  },
+  "targetLangLabel": {
+    "message": "Target Language",
+    "description": "Target language label"
+  },
+  "autoTranslateLabel": {
+    "message": "Auto Translate",
+    "description": "Auto translate toggle label"
+  },
+  "saveButton": {
+    "message": "Save",
+    "description": "Save button"
+  },
+  "translateButton": {
+    "message": "Translate",
+    "description": "Translate button"
+  },
+  "translatingText": {
+    "message": "Translating...",
+    "description": "Translating hint"
+  },
+  "errorNetwork": {
+    "message": "Network error, please retry",
+    "description": "Network error message"
+  },
+  "errorApiKey": {
+    "message": "Invalid API key, please check settings",
+    "description": "API key error message"
+  }
+}
